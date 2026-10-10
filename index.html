@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketMind AI — Full Multi-Agent Decision Engine (Fase 1-5 Showcase)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM UMD CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #020617;
+      color: #f8fafc;
+    }
+    
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white; color: black; }
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500 selection:text-slate-950">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // DATA BASE 25 AGENT PAKAR (FASE 1 & 3)
+    const INITIAL_AGENTS = [
+      // Institutional
+      { id: 'ict_smart_money', name: 'ICT & Order Block Specialist', role: 'Smart Money Concepts Trader', category: 'Institutional', avatar: '🏦', defaultConviction: 88, wins: 42, total: 50 },
+      { id: 'institutional_orderflow', name: 'Order Flow & Footprint Quant', role: 'Analis Order Flow Delta', category: 'Institutional', avatar: '📊', defaultConviction: 82, wins: 38, total: 48 },
+      { id: 'macro_hedge_fund', name: 'Global Macro Manager', role: 'Hedge Fund Portfolio Strategist', category: 'Institutional', avatar: '💼', defaultConviction: 80, wins: 35, total: 45 },
+      { id: 'darkpool_tracker', name: 'Whale & Dark Pool Tracker', role: 'Spesialis Off-Exchange Flow', category: 'Institutional', avatar: '🐋', defaultConviction: 85, wins: 39, total: 46 },
+      { id: 'inst_risk_officer', name: 'Chief Risk Officer (CRO)', role: 'Manajer Risiko Portofolio', category: 'Institutional', avatar: '🛡️', defaultConviction: 92, wins: 45, total: 48 },
+
+      // Retail Pros
+      { id: 'price_action_pro', name: 'Pure Price Action Veteran', role: 'Senior Candlestick Trader', category: 'Retail Pros', avatar: '🕯️', defaultConviction: 84, wins: 36, total: 47 },
+      { id: 'chart_pattern_master', name: 'Classical Pattern Master', role: 'Pakar Pola Grafik Klasik', category: 'Retail Pros', avatar: '📐', defaultConviction: 76, wins: 30, total: 42 },
+      { id: 'harmonic_trader', name: 'Fibonacci Harmonic Architect', role: 'Pakar Rasio PRZ & Harmonic', category: 'Retail Pros', avatar: '🌀', defaultConviction: 74, wins: 28, total: 40 },
+      { id: 'scalper_momentum', name: 'High-Velocity Scalper', role: 'Momentum & EMA Ribbon Scalper', category: 'Retail Pros', avatar: '⚡', defaultConviction: 79, wins: 33, total: 46 },
+      { id: 'swing_trend_rider', name: 'Multi-Timeframe Trend Rider', role: 'Swing Trader Berpengalaman', category: 'Retail Pros', avatar: '📈', defaultConviction: 81, wins: 37, total: 48 },
+
+      // Contrarian
+      { id: 'extreme_sentiment_contrarian', name: 'Fear & Greed Contrarian', role: 'Trader Kontrarian Sentimen', category: 'Contrarian', avatar: '🔄', defaultConviction: 86, wins: 40, total: 49 },
+      { id: 'liquidity_grab_hunter', name: 'Stop-Loss Hunt Specialist', role: 'Pakar Fakeout & Trap', category: 'Contrarian', avatar: '🪤', defaultConviction: 89, wins: 43, total: 51 },
+      { id: 'mean_reversion_architect', name: 'Statistical Mean Reversion', role: 'Pakar Overextended Price', category: 'Contrarian', avatar: '🧮', defaultConviction: 78, wins: 32, total: 43 },
+      { id: 'gamma_squeeze_trader', name: 'Short Squeeze Volatility', role: 'Spesialis Options Liquidation', category: 'Contrarian', avatar: '💣', defaultConviction: 83, wins: 34, total: 44 },
+      { id: 'black_swan_hunter', name: 'Tail-Risk & Anomaly Hunter', role: 'Event Volatilitas Ekstrem', category: 'Contrarian', avatar: '🦅', defaultConviction: 72, wins: 26, total: 38 },
+
+      // Fundamental
+      { id: 'fed_policy_watcher', name: 'Central Bank Policy Expert', role: 'Analis Kebijakan Fed/ECB', category: 'Fundamental', avatar: '🏛️', defaultConviction: 87, wins: 41, total: 48 },
+      { id: 'geopolitical_risk_analyst', name: 'Geopolitical Risk Strategist', role: 'Analis Krisis Global & Geopolitik', category: 'Fundamental', avatar: '🌍', defaultConviction: 75, wins: 29, total: 41 },
+      { id: 'onchain_crypto_analyst', name: 'On-Chain Metrics Analyst', role: 'Pakar Wallet & Network Data', category: 'Fundamental', avatar: '🔗', defaultConviction: 83, wins: 36, total: 45 },
+      { id: 'dxy_commodities_expert', name: 'Intermarket Correlation Quant', role: 'Analis DXY, Gold, & Oil', category: 'Fundamental', avatar: '💵', defaultConviction: 80, wins: 34, total: 43 },
+      { id: 'earnings_macro_auditor', name: 'Corporate Liquidity Auditor', role: 'Analis Arus Kas & Buyback', category: 'Fundamental', avatar: '📑', defaultConviction: 77, wins: 31, total: 42 },
+
+      // Quantitative
+      { id: 'quant_backtester', name: 'Algorithmic Expectancy Quant', role: 'Simulasi Monte Carlo 10k', category: 'Quantitative', avatar: '🖥️', defaultConviction: 91, wins: 46, total: 50 },
+      { id: 'stat_arb_quant', name: 'Statistical Arbitrage Engine', role: 'Quant Z-Score & Cointegration', category: 'Quantitative', avatar: '📐', defaultConviction: 83, wins: 35, total: 43 },
+      { id: 'ml_pattern_predictor', name: 'Machine Learning Predictor', role: 'Neural Deep Learning Fractal', category: 'Quantitative', avatar: '🤖', defaultConviction: 88, wins: 41, total: 47 },
+      { id: 'volatility_greeks_quant', name: 'Greeks Volatility Surface', role: 'Quant Options Delta Neutral', category: 'Quantitative', avatar: '📊', defaultConviction: 82, wins: 33, total: 42 },
+      { id: 'hft_microstructure_quant', name: 'Market Microstructure Profiler', role: 'Analis Spread & Slippage', category: 'Quantitative', avatar: '⚙️', defaultConviction: 87, wins: 39, total: 46 }
+    ];
+
+    // INITIAL SAMPLE JURNAL (FASE 3)
+    const INITIAL_JOURNAL_ENTRIES = [
+      { id: 'j-1', asset: 'BTC/USDT', timeframe: '4H', entry: '$64,200', sl: '$62,900', tp: '$67,500', outcome: 'WIN', pnl: '+$1,300 (+2.02%)', date: '2026-10-01' },
+      { id: 'j-2', asset: 'XAU/USD', timeframe: '1H', entry: '$2,650', sl: '$2,662', tp: '$2,610', outcome: 'WIN', pnl: '+$400 (+1.51%)', date: '2026-10-04' },
+      { id: 'j-3', asset: 'EUR/USD', timeframe: '1D', entry: '1.0850', sl: '1.0810', tp: '1.0940', outcome: 'LOSS', pnl: '-$120 (-0.36%)', date: '2026-10-06' }
+    ];
+
+    // HELPER UNTUK FORMAT SIMBOL TRADINGVIEW CHART
+    const getTvSymbol = (asset) => {
+      if (!asset) return 'BINANCE:BTCUSDT';
+      const clean = asset.trim().toUpperCase().replace(/[\/\s\_]/g, '');
+      if (clean.includes(':')) return clean;
+      if (clean.startsWith('XAU') || clean.includes('GOLD')) return 'OANDA:XAUUSD';
+      if (clean.startsWith('EUR') || clean.startsWith('GBP') || clean.startsWith('USD')) return `FX_IDC:${clean}`;
+      if (clean.includes('BTC') || clean.includes('ETH') || clean.includes('SOL')) return `BINANCE:${clean}`;
+      return clean;
+    };
+
+    // MAIN REACT APP COMPONENT
+    function App() {
+      // TAB NAVIGATION STATE
+      const [activeTab, setActiveTab] = useState('analyzer'); // analyzer | journal | leaderboard | notifications
+
+      // FASE 2: MULTI-TIMEFRAME IMAGES
+      const [tfImages, setTfImages] = useState({ higher: null, intermediate: null, lower: null });
+      const [assetName, setAssetName] = useState('BTC/USDT');
+      const [timeframe, setTimeframe] = useState('4H');
+      const [userNotes, setUserNotes] = useState('Terlihat Fair Value Gap (FVG) di 4H setelah liquidity sweep low. RSI divergence bullish.');
+      const [fundamentalContext, setFundamentalContext] = useState('Sentimen ekspektasi penurunan suku bunga Fed & inflow ETF stabil.');
+
+      // FASE 5: COMPACT VIEW & FILTERS & PREFERENCES
+      const [displayMode, setDisplayMode] = useState(() => localStorage.getItem('mm_display_mode') || 'cards'); // 'cards' | 'compact'
+      const [filterCategory, setFilterCategory] = useState('All');
+      const [filterBias, setFilterBias] = useState('All');
+
+      // FASE 1 & 2: ANALYSIS RESULT & LOADING STATES
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [progressPct, setProgressPct] = useState(0);
+      const [loadingStep, setLoadingStep] = useState('');
+      const [analysisResult, setAnalysisResult] = useState(null);
+
+      // FASE 3: TRADING JOURNAL & LEADERBOARD
+      const [journal, setJournal] = useState(() => {
+        const saved = localStorage.getItem('mm_journal');
+        return saved ? JSON.parse(saved) : INITIAL_JOURNAL_ENTRIES;
+      });
+      const [agentsList, setAgentsList] = useState(INITIAL_AGENTS);
+
+      // FASE 4: NOTIFICATIONS & TELEGRAM LINK CODE
+      const [telegramLinkCode, setTelegramLinkCode] = useState('');
+      const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+      const [toastMsg, setToastMsg] = useState(null);
+
+      // CHAT WITH AGENTS STATE
+      const [chatMessages, setChatMessages] = useState([]);
+      const [chatInput, setChatInput] = useState('');
+
+      // Persist preferences
+      useEffect(() => {
+        localStorage.setItem('mm_display_mode', displayMode);
+      }, [displayMode]);
+
+      useEffect(() => {
+        localStorage.setItem('mm_journal', JSON.stringify(journal));
+      }, [journal]);
+
+      const showToast = (msg) => {
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(null), 3500);
+      };
+
+      // FASE 2: IMAGE UPLOAD HANDLER
+      const handleTfUpload = (key, event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setTfImages(prev => ({ ...prev, [key]: e.target.result }));
+            showToast(`✅ Grafik ${key.toUpperCase()} berhasil dimuat!`);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      // SIMULATOR JALANKAN ANALISIS MULTI-AGENT (FASE 1, 2, 5)
+      const runMultiAgentEngine = () => {
+        setIsAnalyzing(true);
+        setProgressPct(15);
+        setLoadingStep('🔍 Memindai 3 Timeframe (Top-Down Vision AI)...');
+
+        setTimeout(() => {
+          setProgressPct(45);
+          setLoadingStep('📰 Menganalisis kondisi korelasi makro & data fundamental...');
+        }, 1000);
+
+        setTimeout(() => {
+          setProgressPct(75);
+          setLoadingStep('⚔️ Menyelenggarakan debat 25 Dewan Agent Pakar...');
+        }, 2000);
+
+        setTimeout(() => {
+          setProgressPct(100);
+          setIsAnalyzing(false);
+
+          // Generate Result
+          const isBull = userNotes.toLowerCase().includes('bull') || Math.random() > 0.35;
+          const evaluatedAgents = agentsList.map((ag, idx) => {
+            let bias = 'BULLISH';
+            if (ag.category === 'Contrarian') bias = isBull ? 'BEARISH' : 'BULLISH';
+            else if (idx % 5 === 0) bias = 'NEUTRAL';
+            else bias = isBull ? 'BULLISH' : 'BEARISH';
+
+            return {
+              ...ag,
+              bias,
+              conviction: Math.floor(72 + Math.random() * 22),
+              argument: `Sebagai ${ag.role}, saya melihat konfluensi di TF ${timeframe} ${assetName} memberikan pemicu struktur yang jelas.`
+            };
+          });
+
+          const mockResult = {
+            asset: assetName,
+            timeframe: timeframe,
+            overallDecision: isBull ? "STRONG BUY" : "SELL / SHORT",
+            confidenceScore: Math.floor(82 + Math.random() * 12),
+            consensus: {
+              bullishPct: isBull ? 72 : 20,
+              bearishPct: isBull ? 18 : 68,
+              neutralPct: 10
+            },
+            tradeSetup: {
+              entryZone: assetName.includes('BTC') ? "$64,150 - $64,400" : "$2,645 - $2,655",
+              stopLoss: assetName.includes('BTC') ? "$62,950" : "$2,620",
+              takeProfit1: assetName.includes('BTC') ? "$66,800" : "$2,710",
+              takeProfit2: assetName.includes('BTC') ? "$69,200" : "$2,780",
+              riskRewardRatio: "1 : 2.85"
+            },
+            topDownSummary: {
+              higherTf: "Tren Makro Daily Bullish terkonfirmasi di atas EMA 200.",
+               intermediateTf: "Struktur 4H membentuk Higher Low & FVG Imbalance.",
+              lowerTf: "Presisi Entry 15M menunggu Liquidity Sweep sebelum reaksi naik."
+            },
+            debateClash: {
+              agent1: "ICT & Order Block Specialist",
+              agent2: "Liquidity Grab Hunter",
+              topic: "Keabsahan Retest FVG vs Potential Fakeout",
+              argument1: "FVG di 4H sangat segar dan menjadi magnet likuiditas institusi.",
+              argument2: "Waspada! Ada penumpukan Stop Loss di bawah $63,800 yang rentan disapu terlebih dahulu."
+            },
+            agents: evaluatedAgents
+          };
+
+          setAnalysisResult(mockResult);
+          setChatMessages([{
+            sender: 'council',
+            text: `Halo Trader! Analisis untuk ${assetName} (${timeframe}) rampung. Keputusan: ${mockResult.overallDecision} (${mockResult.confidenceScore}% Keyakinan). Silakan ajukan pertanyaan!`
+          }]);
+          showToast('🎉 Analisis 25 Agent Selesai!');
+        }, 3200);
+      };
+
+      // FASE 3: SIMPAN KE JURNAL TRADING
+      const saveToJournal = () => {
+        if (!analysisResult) return;
+        const newEntry = {
+          id: `j-${Date.now()}`,
+          asset: analysisResult.asset,
+          timeframe: analysisResult.timeframe,
+          entry: analysisResult.tradeSetup.entryZone,
+          sl: analysisResult.tradeSetup.stopLoss,
+          tp: analysisResult.tradeSetup.takeProfit1,
+          outcome: 'PENDING',
+          pnl: '0.00%',
+          date: new Date().toISOString().split('T')[0]
+        };
+        setJournal([newEntry, ...journal]);
+        showToast('📓 Berhasil disimpan ke Jurnal Trading!');
+      };
+
+      // FASE 3: UPDATE STATUS HASSIL TRADING (WIN/LOSS)
+      const updateOutcome = (id, newOutcome) => {
+        setJournal(prev => prev.map(item => {
+          if (item.id === id) {
+            const isWin = newOutcome === 'WIN';
+            return {
+              ...item,
+              outcome: newOutcome,
+              pnl: isWin ? '+$850 (+2.1%)' : '-$300 (-0.8%)'
+            };
+          }
+          return item;
+        }));
+
+        // Update Agent Stats
+        setAgentsList(prev => prev.map(ag => ({
+          ...ag,
+          wins: newOutcome === 'WIN' ? ag.wins + 1 : ag.wins,
+          total: ag.total + 1
+        })));
+
+        showToast(`🏆 Status trade diperbarui menjadi ${newOutcome}! Leaderboard ter-update.`);
+      };
+
+      // FASE 4: TELEGRAM LINK CODE GENERATOR
+      const generateTelegramCode = () => {
+        const code = `MM-${Math.floor(100000 + Math.random() * 900000)}`;
+        setTelegramLinkCode(code);
+        showToast(`🤖 Kode Telegram Tautan: ${code}`);
+      };
+
+      // FASE 4: DISCORD TEST WEBHOOK
+      const sendDiscordWebhookTest = () => {
+        if (!discordWebhookUrl) {
+          showToast('⚠️ Masukkan URL Webhook Discord terlebih dahulu!');
+          return;
+        }
+        showToast('🚀 Notifikasi uji berhasil dikirim ke Discord Channel!');
+      };
+
+      // FASE 1: CHAT WITH AGENTS
+      const sendChatMessage = () => {
+        if (!chatInput.trim()) return;
+        const userTxt = chatInput;
+        setChatInput('');
+        setChatMessages(prev => [
+          ...prev,
+          { sender: 'user', text: userTxt },
+          { sender: 'council', text: `[Dewan 25 Agent]: Mengenai "${userTxt}", statistik quant dan orderflow mendukung setup disiplin di area Stop Loss.` }
+        ]);
+      };
+
+      // FILTERS FOR DEBATE ARENA (FASE 5)
+      const filteredAgents = analysisResult?.agents?.filter(agent => {
+        const matchCat = filterCategory === 'All' || agent.category === filterCategory;
+        const matchBias = filterBias === 'All' || agent.bias === filterBias;
+        return matchCat && matchBias;
+      }) || [];
+
+      return (
+        <div className="min-h-screen pb-12">
+          
+          {/* TOAST NOTIFICATION (FASE 5) */}
+          {toastMsg && (
+            <div className="fixed bottom-5 right-5 z-50 bg-emerald-500 text-slate-950 px-4 py-3 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 animate-bounce">
+              <span>{toastMsg}</span>
+            </div>
+          )}
+
+          {/* HEADER BAR */}
+          <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-xl text-slate-950 font-black">
+                  🧠
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-black bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                      MarketMind AI
+                    </h1>
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full">
+                      PROTOTYPE (FASE 1-5)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">25-Agent Multi-Timeframe Trading Decision Engine</p>
+                </div>
+              </div>
+
+              {/* NAVIGATION TABS */}
+              <div className="flex items-center gap-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
+                <button 
+                  onClick={() => setActiveTab('analyzer')} 
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${activeTab === 'analyzer' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  📊 Analisis & Debat
+                </button>
+                <button 
+                  onClick={() => setActiveTab('journal')} 
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${activeTab === 'journal' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  📓 Jurnal ({journal.length})
+                </button>
+                <button 
+                  onClick={() => setActiveTab('leaderboard')} 
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${activeTab === 'leaderboard' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  🏆 Leaderboard
+                </button>
+                <button 
+                  onClick={() => setActiveTab('notifications')} 
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${activeTab === 'notifications' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  🔔 Bot Alerts
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN CONTAINER */}
+          <main className="max-w-7xl mx-auto px-4 lg:px-8 pt-6">
+            
+            {/* ========================================================= */}
+            {/* TAB 1: ANALYZER & DEBATE ARENA (FASE 1, 2, & 5) */}
+            {/* ========================================================= */}
+            {activeTab === 'analyzer' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* LEFT PANEL: MULTI-TF UPLOADER & FORM (FASE 2) */}
+                <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-5">
+                  <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      1. Upload 3 Timeframe Screenshots
+                    </h2>
+                    <span className="text-[10px] text-emerald-400 font-mono">Fase 2 MTF Vision</span>
+                  </div>
+
+                  {/* 3 Timeframe Upload Grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {['higher', 'intermediate', 'lower'].map((tfKey) => (
+                      <label key={tfKey} className="relative border border-dashed border-slate-700 hover:border-emerald-500 bg-slate-950 rounded-xl p-2 text-center cursor-pointer group">
+                        <input type="file" accept="image/*" onChange={(e) => handleTfUpload(tfKey, e)} className="hidden" />
+                        {tfImages[tfKey] ? (
+                          <img src={tfImages[tfKey]} className="h-16 w-full object-cover rounded-lg" />
+                        ) : (
+                          <div className="py-3">
+                            <span className="text-xs block">📷</span>
+                            <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-emerald-400">
+                              {tfKey === 'higher' ? '1D (Macro)' : tfKey === 'intermediate' ? '4H (Struct)' : '15M (Entry)'}
+                            </span>
+                          </div>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* ASSET DETAILS FORM */}
+                  <div className="space-y-3 pt-2 border-t border-slate-800">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">Aset / Pair</label>
+                        <input type="text" value={assetName} onChange={e => setAssetName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">Timeframe Utama</label>
+                        <select value={timeframe} onChange={e => setTimeframe(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                          <option value="15M">15M</option>
+                          <option value="1H">1H</option>
+                          <option value="4H">4H</option>
+                          <option value="1D">Daily</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Catatan Indikator & Bias Pengguna</label>
+                      <textarea rows={2} value={userNotes} onChange={e => setUserNotes(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white" />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Konteks Fundamental Makro</label>
+                      <textarea rows={2} value={fundamentalContext} onChange={e => setFundamentalContext(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white" />
+                    </div>
+                  </div>
+
+                  {/* LIVE CHART EMBED WIDGET (FASE 2) */}
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <span className="text-[11px] text-slate-400 font-bold block">📈 Live Interactive TradingView Chart:</span>
+                    <div className="h-48 bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                      <iframe 
+                        key={`${assetName}-${timeframe}`}
+                        src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_1&symbol=${encodeURIComponent(getTvSymbol(assetName))}&interval=${timeframe === '15M' ? '15' : timeframe === '1H' ? '60' : timeframe === '1D' ? 'D' : '240'}&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=F1F3F6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC`}
+                        className="w-full h-full border-none"
+                      ></iframe>
+                    </div>
+                  </div>
+
+                  {/* ACTION BUTTON */}
+                  <button 
+                    onClick={runMultiAgentEngine} 
+                    disabled={isAnalyzing}
+                    className="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                  >
+                    {isAnalyzing ? 'Menganalisis Multi-Agent...' : '🚀 Jalankan Debat 25 Agent Pakar'}
+                  </button>
+                </div>
+
+                {/* RIGHT PANEL: RESULTS & DEBATE ARENA (FASE 1, 3, 5) */}
+                <div className="lg:col-span-7 space-y-5">
+                  
+                  {/* LOADING ANIMATION */}
+                  {isAnalyzing && (
+                    <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-8 text-center space-y-4">
+                      <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="text-xs font-mono text-emerald-400">{loadingStep}</p>
+                      <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden max-w-xs mx-auto">
+                        <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progressPct}%` }}></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* RESULTS DISPLAY */}
+                  {!isAnalyzing && analysisResult && (
+                    <div className="space-y-5">
+                      
+                      {/* CONSENSUS CARD */}
+                      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+                          <div>
+                            <span className="text-xs text-slate-400 font-mono">Konsensus Akhir ({analysisResult.asset} • {analysisResult.timeframe})</span>
+                            <h2 className="text-2xl font-black text-emerald-400">{analysisResult.overallDecision}</h2>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={saveToJournal} className="px-3 py-1.5 bg-emerald-500 text-slate-950 font-bold rounded-lg text-xs">
+                              💾 Simpan Jurnal
+                            </button>
+                            <button onClick={() => window.print()} className="px-3 py-1.5 bg-slate-800 text-slate-200 font-bold rounded-lg text-xs">
+                              📄 Cetak PDF
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Trade Setup Matrix */}
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span className="text-[9px] text-slate-500 uppercase block">Entry</span>
+                            <span className="text-xs font-bold text-emerald-300 font-mono">{analysisResult.tradeSetup.entryZone}</span>
+                          </div>
+                          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span className="text-[9px] text-slate-500 uppercase block">Stop Loss</span>
+                            <span className="text-xs font-bold text-rose-400 font-mono">{analysisResult.tradeSetup.stopLoss}</span>
+                          </div>
+                          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span className="text-[9px] text-slate-500 uppercase block">Target TP1</span>
+                            <span className="text-xs font-bold text-cyan-300 font-mono">{analysisResult.tradeSetup.takeProfit1}</span>
+                          </div>
+                          <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span className="text-[9px] text-slate-500 uppercase block">R : R Ratio</span>
+                            <span className="text-xs font-bold text-amber-300 font-mono">{analysisResult.tradeSetup.riskRewardRatio}</span>
+                          </div>
+                        </div>
+
+                        {/* Top Down MTF Summary (Fase 2) */}
+                        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                          <span className="font-bold text-cyan-400">📊 Top-Down Confluence:</span>
+                          <p className="text-slate-300 text-[11px]">• Daily: {analysisResult.topDownSummary.higherTf}</p>
+                          <p className="text-slate-300 text-[11px]">• 4H Structure: {analysisResult.topDownSummary.intermediateTf}</p>
+                        </div>
+                      </div>
+
+                      {/* DEBATE ARENA & COMPACT TOGGLE (FASE 5) */}
+                      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                            ⚔️ Ruang Debat Dewan 25 Agent
+                          </h3>
+
+                          {/* Mode Sakelar Compact View (Fase 5) */}
+                          <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                            <button 
+                              onClick={() => setDisplayMode('cards')} 
+                              className={`px-2.5 py-1 rounded font-bold ${displayMode === 'cards' ? 'bg-slate-800 text-emerald-400' : 'text-slate-500'}`}
+                            >
+                              🃏 Grid Cards
+                            </button>
+                            <button 
+                              onClick={() => setDisplayMode('compact')} 
+                              className={`px-2.5 py-1 rounded font-bold ${displayMode === 'compact' ? 'bg-slate-800 text-emerald-400' : 'text-slate-500'}`}
+                            >
+                              📊 Compact View
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Quick Filters (Fase 5) */}
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          <span className="text-slate-500 self-center">Filter:</span>
+                          {['All', 'Institutional', 'Retail Pros', 'Contrarian', 'Fundamental', 'Quantitative'].map(cat => (
+                            <button 
+                              key={cat} 
+                              onClick={() => setFilterCategory(cat)}
+                              className={`px-2 py-0.5 rounded text-[11px] ${filterCategory === cat ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-950 text-slate-400'}`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* DISPLAY MODE 1: CARDS */}
+                        {displayMode === 'cards' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                            {filteredAgents.map(ag => (
+                              <div key={ag.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-slate-200">{ag.avatar} {ag.name}</span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${ag.bias === 'BULLISH' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                    {ag.bias} ({ag.conviction}%)
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-relaxed">"{ag.argument}"</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* DISPLAY MODE 2: COMPACT TABLE (FASE 5) */}
+                        {displayMode === 'compact' && (
+                          <div className="overflow-x-auto max-h-96">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="border-b border-slate-800 text-slate-500 text-[10px] uppercase font-mono">
+                                  <th className="p-2">Agent</th>
+                                  <th className="p-2">Kategori</th>
+                                  <th className="p-2">Bias</th>
+                                  <th className="p-2">Keyakinan</th>
+                                  <th className="p-2">Argumen Singkat</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60">
+                                {filteredAgents.map(ag => (
+                                  <tr key={ag.id} className="hover:bg-slate-950/60">
+                                    <td className="p-2 font-bold text-slate-200">{ag.avatar} {ag.name}</td>
+                                    <td className="p-2 text-slate-400 text-[11px]">{ag.category}</td>
+                                    <td className="p-2">
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${ag.bias === 'BULLISH' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                        {ag.bias}
+                                      </span>
+                                    </td>
+                                    <td className="p-2 font-mono text-cyan-400">{ag.conviction}%</td>
+                                    <td className="p-2 text-slate-400 text-[11px] truncate max-w-xs">{ag.argument}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                      </div>
+
+                      {/* Q&A CHAT WITH AGENTS (FASE 1) */}
+                      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                        <span className="text-xs font-bold text-slate-300 block">💬 Tanya Dewan 25 Agent:</span>
+                        <div className="space-y-2 max-h-36 overflow-y-auto text-xs">
+                          {chatMessages.map((m, idx) => (
+                            <div key={idx} className={`p-2 rounded-lg ${m.sender === 'user' ? 'bg-emerald-500/10 text-emerald-300 ml-8' : 'bg-slate-950 text-slate-300 mr-8 border border-slate-800'}`}>
+                              {m.text}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Tanyakan argumen ICT Agent..." className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white" />
+                          <button onClick={sendChatMessage} className="px-3 py-1.5 bg-cyan-500 text-slate-950 font-bold rounded-lg text-xs">Kirim</button>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {!isAnalyzing && !analysisResult && (
+                    <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
+                      <span className="text-4xl block">🏛️</span>
+                      <h3 className="text-sm font-bold text-slate-200">Dewan 25 Agent Siap Membantu</h3>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">Upload gambar 3 timeframe atau klik 'Jalankan Debat' untuk melihat analisis konsensus.</p>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 2: TRADING JOURNAL (FASE 3) */}
+            {/* ========================================================= */}
+            {activeTab === 'journal' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-100">📓 Jurnal Trading & Riwayat Analisis</h2>
+                    <p className="text-xs text-slate-400">Lacak realisasi trade dan pembaruan hasil (Win / Loss)</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-500 font-mono uppercase text-[10px]">
+                        <th className="p-3">Tanggal</th>
+                        <th className="p-3">Aset</th>
+                        <th className="p-3">TF</th>
+                        <th className="p-3">Entry</th>
+                        <th className="p-3">Stop Loss</th>
+                        <th className="p-3">Take Profit</th>
+                        <th className="p-3">Hasil Trade</th>
+                        <th className="p-3">PnL</th>
+                        <th className="p-3">Aksi Pembaruan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {journal.map(item => (
+                        <tr key={item.id} className="hover:bg-slate-950/50">
+                          <td className="p-3 font-mono text-slate-400">{item.date}</td>
+                          <td className="p-3 font-bold text-white">{item.asset}</td>
+                          <td className="p-3 text-slate-400">{item.timeframe}</td>
+                          <td className="p-3 font-mono text-emerald-400">{item.entry}</td>
+                          <td className="p-3 font-mono text-rose-400">{item.sl}</td>
+                          <td className="p-3 font-mono text-cyan-400">{item.tp}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${item.outcome === 'WIN' ? 'bg-emerald-500/20 text-emerald-400' : item.outcome === 'LOSS' ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-amber-400'}`}>
+                              {item.outcome}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono">{item.pnl}</td>
+                          <td className="p-3 flex gap-1">
+                            <button onClick={() => updateOutcome(item.id, 'WIN')} className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 font-bold rounded text-[10px]">
+                              WIN
+                            </button>
+                            <button onClick={() => updateOutcome(item.id, 'LOSS')} className="px-2 py-1 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-slate-950 font-bold rounded text-[10px]">
+                              LOSS
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 3: AGENT ACCURACY LEADERBOARD (FASE 3) */}
+            {/* ========================================================= */}
+            {activeTab === 'leaderboard' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div className="border-b border-slate-800 pb-4">
+                  <h2 className="text-base font-bold text-slate-100">🏆 Papan Peringkat Akurasi 25 Agent AI</h2>
+                  <p className="text-xs text-slate-400">Peringkat berdasarkan Win-Rate historis dari konfirmasi jurnal trading pengguna</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {agentsList.map((ag, idx) => {
+                    const winRate = Math.round((ag.wins / ag.total) * 100);
+                    return (
+                      <div key={ag.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-black font-mono text-slate-600">#{idx + 1}</span>
+                          <span className="text-2xl">{ag.avatar}</span>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-200">{ag.name}</h4>
+                            <span className="text-[10px] text-slate-500">{ag.role}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right space-y-1">
+                          <span className="text-sm font-black text-emerald-400 font-mono">{winRate}% WIN</span>
+                          <span className="text-[10px] text-slate-500 block">{ag.wins} W / {ag.total - ag.wins} L</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 4: NOTIFICATIONS & TELEGRAM BOT (FASE 4) */}
+            {/* ========================================================= */}
+            {activeTab === 'notifications' && (
+              <div className="max-w-2xl mx-auto space-y-6">
+                
+                {/* TELEGRAM SETTINGS (FASE 4) */}
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <span className="text-2xl">✈️</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-100">Pengaturan Bot Telegram</h3>
+                      <p className="text-xs text-slate-400">Hubungkan akun Telegram untuk menerima lansiran sinyal otomatis</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button onClick={generateTelegramCode} className="px-4 py-2 bg-sky-500 text-slate-950 font-bold rounded-xl text-xs">
+                      🔑 Generate Telegram Link Code
+                    </button>
+
+                    {telegramLinkCode && (
+                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                        <span className="text-[10px] text-slate-500">Kirim kode ini ke bot Telegram @MarketMindAIBot:</span>
+                        <div className="text-lg font-mono font-bold text-sky-400">{telegramLinkCode}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* DISCORD WEBHOOK SETTINGS (FASE 4) */}
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                    <span className="text-2xl">👾</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-100">Discord Webhook Alert</h3>
+                      <p className="text-xs text-slate-400">Kirim Rich Embed sinyal langsung ke Channel Komunitas Discord</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <input 
+                      type="text" 
+                      value={discordWebhookUrl} 
+                      onChange={e => setDiscordWebhookUrl(e.target.value)} 
+                      placeholder="https://discord.com/api/webhooks/..." 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                    <button onClick={sendDiscordWebhookTest} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs">
+                      🧪 Uji Kirim Webhook Discord
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+          </main>
+        </div>
+      );
+    }
+
+    // RENDER REACT APP
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<App />);
+  </script>
+</body>
+</html>

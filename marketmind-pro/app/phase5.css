@@ -1,0 +1,7 @@
+/* CSS biasa (tanpa direktif Tailwind) → aman untuk Tailwind v3 maupun v4. Dimuat SETELAH globals.css agar menang. */
+html { color-scheme: dark; }
+body { background: #020617; color: #f1f5f9; } /* menimpa var(--background) bawaan create-next-app yang terang di mode light OS */
+:focus-visible { outline-color: #34d399; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
